@@ -1,6 +1,9 @@
 ---
 pximage: quay.io/porx/porxsdk:1
 pullimage: false
-auth: false
+auth: true
+
+# must have auth also true
+tls: false
 oci_switches: -enable-shared-v4
 shared_secret: mysecret

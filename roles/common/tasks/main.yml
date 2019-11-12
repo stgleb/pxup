@@ -79,24 +79,24 @@
 
 - name: copy cert key
   copy: src=insecure_ca.key owner=root group=root dest=/etc/ssl/insecure_ca.key
-  when: auth
+  when: tls
 
 - name: copy ca
   copy: src=insecure_ca.crt owner=root group=root dest=/etc/pwx/insecure_ca.crt
-  when: auth
+  when: tls
 
 - name: create server key
   command: openssl genrsa -out /etc/pwx/server.key 2048
   args:
     creates: /etc/pwx/server.key
-  when: auth
+  when: tls
 
 - name: create server csr
   openssl_csr:
     path: /etc/pwx/server.csr
     privatekey_path: /etc/pwx/server.key
     common_name: "{{ inventory_hostname }}"
-  when: auth
+  when: tls
 
 - name: create certs
   openssl_certificate:
@@ -105,7 +105,7 @@
     ownca_path: /etc/pwx/insecure_ca.crt
     ownca_privatekey_path: /etc/ssl/insecure_ca.key
     provider: ownca
-  when: auth
+  when: tls
 
 - name: remove all old docker
   yum: name={{ item }} state=removed disable_gpg_check=yes
@@ -163,7 +163,15 @@
 
 - name: Install px from oci image
   command: /opt/pwx/bin/px-runc  install -c "pxup-cluster" -k etcd:http://{{ hostvars[groups['all'][0]].ansible_eth1.ipv4.address }}:2379 -jwt_issuer=openstorage.io -A -apirootca=/etc/pwx/insecure_ca.crt -apicert=/etc/pwx/server.crt -apikey=/etc/pwx/server.key  -apidisclientauth {{ oci_switches }}
-  when: auth and not px_runc_rules.stat.exists
+  when: tls and auth and not px_runc_rules.stat.exists
+  environment:
+    PORTWORX_AUTH_JWT_SHAREDSECRET: "{{ shared_secret }}"
+    PORTWORX_AUTH_SYSTEM_KEY: "{{ shared_secret }}"
+    CSI_ENDPOINT: "unix:///var/lib/kubelet/plugins/com.openstorage.pxd/csi.sock"
+
+- name: Install px from oci image
+  command: /opt/pwx/bin/px-runc  install -c "pxup-cluster" -k etcd:http://{{ hostvars[groups['all'][0]].ansible_eth1.ipv4.address }}:2379 -jwt_issuer=openstorage.io -A {{ oci_switches }}
+  when: not tls and auth and not px_runc_rules.stat.exists
   environment:
     PORTWORX_AUTH_JWT_SHAREDSECRET: "{{ shared_secret }}"
     PORTWORX_AUTH_SYSTEM_KEY: "{{ shared_secret }}"
