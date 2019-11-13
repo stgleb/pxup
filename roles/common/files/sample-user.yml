@@ -1,0 +1,5 @@
+name: John Doe
+sub: id/john@portworx.com
+email: john@portworx.com
+roles: ["system.admin"]
+groups: ["px-engineering", "kubernetes-csi"]

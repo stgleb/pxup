@@ -199,6 +199,28 @@
 - name: Waiting for system to be online
   wait_for: timeout=600 port=9001
 
+- name: copy sample-user.yml
+  copy: src=sample-user.yml owner=root group=root dest=/etc/sample-user.yml
+  when: auth
+
+- name: Generate token
+  command: /opt/pwx/bin/pxctl auth token generate --auth-config /etc/sample-user.yml --shared-secret {{ shared_secret }} --issuer openstorage.io
+  register: auth_token
+  ignore_errors: True
+  when: auth
+
+- set_fact: 
+    auth_token={{ auth_token.stdout }}
+  when: auth
+
+- name: Create context
+  command: /opt/pwx/bin/pxctl context create admin --token {{ auth_token }}
+  when: auth
+
+- name: Set context
+  command: /opt/pwx/bin/pxctl context set admin
+  when: auth
+
 - name: setup trial license
   command: timeout 30 sh -c 'until /opt/pwx/bin/pxctl license act trial > /dev/null 2>&1; do sleep 1 ; done'
 
